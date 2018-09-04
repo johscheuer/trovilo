@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 
 	"github.com/ericchiang/k8s"
-	yaml "gopkg.in/yaml.v2"
+	yaml "github.com/ghodss/yaml" //"gopkg.in/yaml.v2"
 )
 
 // loadKubernetesConfig parses a kubeconfig from a file and returns a Kubernetes

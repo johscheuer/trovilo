@@ -42,16 +42,15 @@ Flags:
 
 Deploy the binary to your target systems or use the [official Docker image](https://hub.docker.com/r/inovex/trovilo/). Notice: The *tools*-tagged Docker image additionally contains useful tools for verify or post-deploy commands.
 
-Simple trovilo example configuration file:
+Simple trovilo example configuration file `trovilo-config.yaml`:
 
-```
-$ cat trovilo-config.yaml
-# Which namespace to check (empty string means all namespaces)
-#namespace: ""
-jobs:
+```Yaml
+job:
   # Arbitrary name for identification (and troubleshooting in logs)
-  - name: alert-rules
-    # Kubernetes-styled label selector to define how to find ConfigMaps
+   name: alert-rules
+    # An empty string means look at all namespaces
+    namespace: ''
+    # Kubernetes-styled label selector (notice all available namespaces will be checked)
     selector:
       type: prometheus-alerts
     verify:
@@ -74,7 +73,7 @@ jobs:
 
 Full example Kubernetes deployment with Prometheus:
 
-```
+```Bash
 $ kubectl apply \
   -f https://raw.githubusercontent.com/inovex/trovilo/master/examples/k8s/alert-rules-team1.yaml \
   -f https://raw.githubusercontent.com/inovex/trovilo/master/examples/k8s/prometheus-config.yaml \

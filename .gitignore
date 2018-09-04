@@ -4,3 +4,4 @@ tmp/
 trovilo
 vendor/
 .vscode/
+config.yml

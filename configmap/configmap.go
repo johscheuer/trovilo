@@ -75,22 +75,6 @@ func VerifyCM(configMap *corev1.ConfigMap, verifySteps []config.VerifyStep) (map
 	return verifiedFiles, "", nil
 }
 
-// CompareCMLabels tests a ConfigMap against expected labels (selector)
-func CompareCMLabels(expected map[string]string, actual map[string]string) bool {
-	if len(actual) == 0 {
-		// immediately abort if there are no labels at all
-		return false
-	}
-
-	for key, expectedValue := range expected {
-		actualValue, found := (actual)[key]
-		if !found || expectedValue != actualValue {
-			return false
-		}
-	}
-	return true
-}
-
 // RegisterCM writes a ConfigMap to filesystem
 func RegisterCM(configMap *corev1.ConfigMap, targetDir string, flatten bool) ([]string, error) {
 	var registeredFiles []string
