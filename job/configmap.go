@@ -1,4 +1,4 @@
-package configmap
+package job
 
 import (
 	"fmt"
@@ -9,18 +9,17 @@ import (
 	"strings"
 
 	corev1 "github.com/ericchiang/k8s/apis/core/v1"
-	"github.com/inovex/trovilo/config"
 	"github.com/inovex/trovilo/filesystem"
 )
 
-func genereateTargetPath(targetDir string, namespace string, configMap string, configMapDataFile string, flatten bool) string {
+func generateTargetPath(targetDir string, namespace string, configMap string, configMapDataFile string, flatten bool) string {
 	if flatten {
 		return filepath.Join(targetDir, fmt.Sprintf("%s_%s_%s", namespace, configMap, configMapDataFile))
 	}
 	return filepath.Join(targetDir, namespace, configMap, configMapDataFile)
 }
 
-func runCmdAgainstCMFile(file string, cmd config.VerifyStepCmd) (string, error) {
+func runCmdAgainstCMFile(file string, cmd VerifyStepCmd) (string, error) {
 	var args []string
 
 	for cmdPos := range cmd {
@@ -38,7 +37,7 @@ func runCmdAgainstCMFile(file string, cmd config.VerifyStepCmd) (string, error) 
 }
 
 // VerifyCM runs user-defined tests against ConfigMap's files to decide whether to accept them or not
-func VerifyCM(configMap *corev1.ConfigMap, verifySteps []config.VerifyStep) (map[string]string, string, error) {
+func VerifyCM(configMap *corev1.ConfigMap, verifySteps []VerifyStep) (map[string]string, string, error) {
 	verifiedFiles := map[string]string{}
 
 	for file, fileContents := range configMap.Data {
@@ -80,7 +79,7 @@ func RegisterCM(configMap *corev1.ConfigMap, targetDir string, flatten bool) ([]
 	var registeredFiles []string
 
 	for file, fileContents := range configMap.Data {
-		targetFile := genereateTargetPath(targetDir, *configMap.Metadata.Namespace, *configMap.Metadata.Name, file, flatten)
+		targetFile := generateTargetPath(targetDir, *configMap.Metadata.Namespace, *configMap.Metadata.Name, file, flatten)
 		registeredFiles = append(registeredFiles, targetFile)
 
 		err := filesystem.WriteFile(targetFile, []byte(fileContents))
@@ -95,7 +94,7 @@ func RegisterCM(configMap *corev1.ConfigMap, targetDir string, flatten bool) ([]
 // IsCMAlreadyRegistered is a helper function that checks whether we already know this ConfigMap
 func IsCMAlreadyRegistered(configMap *corev1.ConfigMap, targetDir string, flatten bool) bool {
 	for file := range configMap.Data {
-		targetFile := genereateTargetPath(targetDir, *configMap.Metadata.Namespace, *configMap.Metadata.Name, file, flatten)
+		targetFile := generateTargetPath(targetDir, *configMap.Metadata.Namespace, *configMap.Metadata.Name, file, flatten)
 
 		_, err := os.Stat(targetFile)
 		if err == nil {
@@ -110,7 +109,7 @@ func RemoveCMfromTargetDir(configMap *corev1.ConfigMap, targetDir string, flatte
 	var removedFiles []string
 
 	for file := range configMap.Data {
-		targetFile := genereateTargetPath(targetDir, *configMap.Metadata.Namespace, *configMap.Metadata.Name, file, flatten)
+		targetFile := generateTargetPath(targetDir, *configMap.Metadata.Namespace, *configMap.Metadata.Name, file, flatten)
 		removedFiles = append(removedFiles, *configMap.Metadata.Namespace, *configMap.Metadata.Name, targetFile)
 
 		err := filesystem.DeleteFile(targetFile)
@@ -123,7 +122,7 @@ func RemoveCMfromTargetDir(configMap *corev1.ConfigMap, targetDir string, flatte
 }
 
 // RunPostDeployActionCmd should be invoked after successfully deploying a CM and simply runs an user-defined command
-func RunPostDeployActionCmd(cmd config.PostDeployActionCmd) (string, error) {
+func RunPostDeployActionCmd(cmd PostDeployActionCmd) (string, error) {
 	c := exec.Command(cmd[0], cmd[1:]...)
 	output, err := c.CombinedOutput()
 

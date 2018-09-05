@@ -1,4 +1,4 @@
-package config
+package job
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 
 	"github.com/ericchiang/k8s"
 	corev1 "github.com/ericchiang/k8s/apis/core/v1"
-	"github.com/inovex/trovilo/configmap"
 	"github.com/sirupsen/logrus"
 
 	yaml "gopkg.in/yaml.v2"
@@ -38,9 +37,9 @@ type Job struct {
 	logger     *logrus.Logger
 }
 
-func (job *Job) Initialize(client *k8s.Client) {
-	if job.logger == nil {
-		job.logger = logrus.New()
+func (job *Job) Initialize(logger *logrus.Logger, client *k8s.Client) {
+	if logger != nil {
+		job.logger = logger
 	}
 
 	job.logger.Infof("Configure job: %s", job.Name)
@@ -52,33 +51,38 @@ func (job *Job) Initialize(client *k8s.Client) {
 
 	watcher, err := client.Watch(context.Background(), job.Namespace, new(corev1.ConfigMap), selector.Selector())
 	if err != nil {
-		//TODO really an fatal?
 		job.logger.WithError(err).Fatalf("Failed to load Kubernetes ConfigMap watcher for %s", job.Name)
 	}
 
-	// TODO hot to call the close
-	//defer watcher.Close()
 	job.watcher = watcher
 }
 
 func (job *Job) Watch() {
+	defer job.watcher.Close()
+
 	for {
 		cm := new(corev1.ConfigMap)
 		eventType, err := job.watcher.Next(cm)
 		if err != nil {
 			// TODO recreate watcher!
+			//job.Initialize(nil, job.client)
 			job.logger.WithError(err).Fatal("Kubernetes ConfigMap watcher encountered an error. Exit..") //TODO is it necessary to exit?
 		}
 
-		logEntryWithSelectors := logEntryBase.WithFields(logrus.Fields{
+		logEntryBase := job.logger.WithFields(logrus.Fields{
+			"job":       job.Name,
+			"configmap": *cm.Metadata.Name,
+			"namespace": *cm.Metadata.Namespace,
+		})
+		/*logEntryWithSelectors := logEntryBase.WithFields(logrus.Fields{
 			"actualLabels":   cm.Metadata.Labels,
 			"expectedLabels": job.Selector,
 			"eventType":      eventType,
-		})
+		})*/
 		// Check whether ConfigMap matches to our expected labels
-		if eventType == "DELETED" && configmap.IsCMAlreadyRegistered(cm, job.TargetDir, job.Flatten) {
+		if eventType == "DELETED" && IsCMAlreadyRegistered(cm, job.TargetDir, job.Flatten) {
 			logEntryBase.Info("ConfigMap has been deleted from namepace, thus removing in target directory too")
-			removedFiles, err := configmap.RemoveCMfromTargetDir(cm, job.TargetDir, job.Flatten)
+			removedFiles, err := RemoveCMfromTargetDir(cm, job.TargetDir, job.Flatten)
 
 			logEntry := logEntryBase.WithField("removedFiles", removedFiles)
 			if err != nil {
@@ -105,7 +109,7 @@ func (job *Job) Watch() {
 
 			// TODO move this into separate function
 			// Verify validity of ConfigMap files
-			verifiedFiles, latestOutput, err := configmap.VerifyCM(cm, job.Verify)
+			verifiedFiles, latestOutput, err := VerifyCM(cm, job.Verify)
 			if err != nil {
 				logEntryBase.WithFields(logrus.Fields{
 					"verifySteps":   job.Verify,
@@ -123,7 +127,7 @@ func (job *Job) Watch() {
 		}
 
 		// ConfigMap has been verified, write files to filesystem
-		registeredFiles, err := configmap.RegisterCM(cm, job.TargetDir, job.Flatten)
+		registeredFiles, err := RegisterCM(cm, job.TargetDir, job.Flatten)
 		logEntry := logEntryBase.WithFields(logrus.Fields{
 			"eventType":       eventType,
 			"registeredFiles": registeredFiles,
@@ -143,10 +147,9 @@ func (job *Job) Watch() {
 
 func (job *Job) processPostDeployActions(logEntryBase *logrus.Entry, postDeployActions []PostDeployAction) {
 	for _, postDeployAction := range postDeployActions {
-		_ = postDeployAction
-		//TODO
-		//output, err := configmap.RunPostDeployActionCmd(postDeployAction.Cmd)
-		/*
+
+		output, err := RunPostDeployActionCmd(postDeployAction.Cmd)
+		
 			logEntry := *logEntryBase.WithFields(logrus.Fields{
 				"postDeployAction": postDeployAction,
 				"output":           output,
@@ -155,12 +158,12 @@ func (job *Job) processPostDeployActions(logEntryBase *logrus.Entry, postDeployA
 				logEntry.WithError(err).Error("Failed to executed postDeployAction command")
 			} else {
 				logEntry.Info("Successfully executed postDeployAction command")
-			}*/
+			}
 	}
 }
 
-// GetConfig Translates the YAML main configuration file into Config struct
-func GetConfig(log *logrus.Logger, configFile string) (*Job, error) {
+// GetJob Translates the YAML main configuration file into a Job struct
+func GetJob(log *logrus.Logger, configFile string) (Job, error) {
 	yamlFile, err := ioutil.ReadFile(configFile)
 
 	if yamlFile == nil {
@@ -168,7 +171,7 @@ func GetConfig(log *logrus.Logger, configFile string) (*Job, error) {
 	}
 
 	job := Job{}
-	err = yaml.Unmarshal(yamlFile, &config)
+	err = yaml.Unmarshal(yamlFile, &job)
 
 	return job, err
 }

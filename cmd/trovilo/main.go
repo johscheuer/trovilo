@@ -6,7 +6,7 @@ import (
 	"github.com/alecthomas/kingpin"
 	corev1 "github.com/ericchiang/k8s/apis/core/v1"
 	"github.com/inovex/trovilo/client"
-	"github.com/inovex/trovilo/config"
+	"github.com/inovex/trovilo/job"
 	"github.com/inovex/trovilo/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -31,7 +31,7 @@ func main() {
 	logging.SetupLogging(log, *logJSON, *logLevel)
 
 	// Prepare app configuration
-	troviloJob, err := config.GetConfig(log, *configFile)
+	troviloJob, err := job.GetJob(log, *configFile)
 	if err != nil {
 		log.WithError(err).Fatal("Error parsing config file")
 	}
@@ -51,6 +51,6 @@ func main() {
 	}
 	log.Debug("Successfully tested Kubernetes connectivity")
 
-	troviloJob.Initialize(client)
+	troviloJob.Initialize(log, client)
 	troviloJob.Watch()
 }

@@ -10,10 +10,13 @@ zip = cd build && zip $(appname)-$(artifact_version).$(1)-$(2).zip $(appname)$(3
 
 .PHONY: all test clean fmt vendor windows darwin linux
 
-all: vendor windows darwin linux
+all: vendor test windows darwin linux
 
 #test:
 #	./test/run-integration-tests.sh
+
+test:
+	go test -v ./...
 
 clean:
 	rm -rf build/

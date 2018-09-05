@@ -47,6 +47,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:2cd7915ab26ede7d95b8749e6b1f933f1c6d5398030684e6505940a10f31cfda"
+  name = "github.com/ghodss/yaml"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:ffc060c551980d37ee9e428ef528ee2813137249ccebb0bfc412ef83071cac91"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
@@ -132,6 +140,7 @@
     "github.com/alecthomas/kingpin",
     "github.com/ericchiang/k8s",
     "github.com/ericchiang/k8s/apis/core/v1",
+    "github.com/ghodss/yaml",
     "github.com/sirupsen/logrus",
     "gopkg.in/yaml.v2",
   ]
