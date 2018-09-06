@@ -35,6 +35,7 @@ type Job struct {
 	PostDeploy []PostDeployAction `yaml:"post-deploy"`
 	watcher    *k8s.Watcher
 	logger     *logrus.Logger
+	client     *k8s.Client
 }
 
 func (job *Job) Initialize(logger *logrus.Logger, client *k8s.Client) {
@@ -64,9 +65,12 @@ func (job *Job) Watch() {
 		cm := new(corev1.ConfigMap)
 		eventType, err := job.watcher.Next(cm)
 		if err != nil {
-			// TODO recreate watcher!
-			//job.Initialize(nil, job.client)
-			job.logger.WithError(err).Fatal("Kubernetes ConfigMap watcher encountered an error. Exit..") //TODO is it necessary to exit?
+			// TODO: can we test here for a specific type?
+			// ensure watcher is closed
+			job.watcher.Close()
+			// recreate watcher
+			job.Initialize(nil, job.client)
+			//job.logger.WithError(err).Fatal("Kubernetes ConfigMap watcher encountered an error. Exit..")
 		}
 
 		logEntryBase := job.logger.WithFields(logrus.Fields{
@@ -109,7 +113,7 @@ func (job *Job) Watch() {
 
 			// TODO move this into separate function
 			// Verify validity of ConfigMap files
-			verifiedFiles, latestOutput, err := VerifyCM(cm, job.Verify)
+			verifiedFiles, latestOutput, err := verifyCM(cm, job.Verify)
 			if err != nil {
 				logEntryBase.WithFields(logrus.Fields{
 					"verifySteps":   job.Verify,
@@ -149,16 +153,16 @@ func (job *Job) processPostDeployActions(logEntryBase *logrus.Entry, postDeployA
 	for _, postDeployAction := range postDeployActions {
 
 		output, err := RunPostDeployActionCmd(postDeployAction.Cmd)
-		
-			logEntry := *logEntryBase.WithFields(logrus.Fields{
-				"postDeployAction": postDeployAction,
-				"output":           output,
-			})
-			if err != nil {
-				logEntry.WithError(err).Error("Failed to executed postDeployAction command")
-			} else {
-				logEntry.Info("Successfully executed postDeployAction command")
-			}
+
+		logEntry := *logEntryBase.WithFields(logrus.Fields{
+			"postDeployAction": postDeployAction,
+			"output":           output,
+		})
+		if err != nil {
+			logEntry.WithError(err).Error("Failed to executed postDeployAction command")
+		} else {
+			logEntry.Info("Successfully executed postDeployAction command")
+		}
 	}
 }
 

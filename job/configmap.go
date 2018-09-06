@@ -37,7 +37,7 @@ func runCmdAgainstCMFile(file string, cmd VerifyStepCmd) (string, error) {
 }
 
 // VerifyCM runs user-defined tests against ConfigMap's files to decide whether to accept them or not
-func VerifyCM(configMap *corev1.ConfigMap, verifySteps []VerifyStep) (map[string]string, string, error) {
+func verifyCM(configMap *corev1.ConfigMap, verifySteps []VerifyStep) (map[string]string, string, error) {
 	verifiedFiles := map[string]string{}
 
 	for file, fileContents := range configMap.Data {
